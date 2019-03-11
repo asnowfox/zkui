@@ -63,6 +63,7 @@ public enum ZooKeeperUtil {
                 logger.trace("Connecting to ZK.");
             }
         });
+        zk.addAuthInfo("digest", "cc:3.0#bkcc".getBytes());
         //Wait till connection is established.
         while (zk.getState() != ZooKeeper.States.CONNECTED) {
             Thread.sleep(30);
@@ -256,14 +257,21 @@ public enum ZooKeeperUtil {
         if (children != null) {
             for (String child : children) {
                 if (!child.equals(ZK_SYSTEM_NODE)) {
-
-                    List<String> subChildren = zk.getChildren(path + ("/".equals(path) ? "" : "/") + child, false);
-                    boolean isFolder = subChildren != null && !subChildren.isEmpty();
-                    if (isFolder) {
-                        folders.add(child);
-                    } else {
+                    try {
+                        List<String> subChildren = zk.getChildren(path + ("/".equals(path) ? "" : "/") + child, false);
+                        boolean isFolder = subChildren != null && !subChildren.isEmpty();
+                        if (isFolder) {
+                            folders.add(child);
+                        } else {
+                            String childPath = getNodePath(path, child);
+                            leaves.add(this.getNodeValue(zk, path, childPath, child, authRole));
+                        }
+                    }catch(Exception ex){
+                        ex.printStackTrace();
                         String childPath = getNodePath(path, child);
-                        leaves.add(this.getNodeValue(zk, path, childPath, child, authRole));
+                        childPath = childPath +"("+ex.getMessage()+")";
+                        logger.info("Lookup: path=" + path + ",childPath=" + childPath + ",child=" + child + ",authRole=" + authRole);
+                        folders.add(child+"(need Password)");
                     }
 
                 }
